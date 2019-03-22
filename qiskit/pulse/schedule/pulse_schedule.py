@@ -25,24 +25,42 @@ logger = logging.getLogger(__name__)
 class ScheduleNode(metaclass=ABCMeta):
     """Common interface for nodes of a schedule tree. """
 
+    def __init__(self,
+                 t0: int,
+                 parent: 'ScheduleNode' = None,
+                 children: List['ScheduleNode'] = None):
+        self._t0 = t0
+        self._parent = parent
+        self._children = children
+
+    @property
+    def t0(self) -> int:
+        """Relative begin time of this pulse. """
+        return self._t0
+
+    @property
+    def parent(self) -> Optional['ScheduleNode']:
+        """Parent node of this schedule node. """
+        return self._parent
+
+    @property
+    def children(self) -> Optional[List['ScheduleNode']]:
+        """Child nodes of this schedule node. """
+        return self._children
+
     @abstractmethod
     def begin_time(self) -> int:
+        """Absolute begin time of this schedule node. """
         pass
 
     @abstractmethod
     def end_time(self) -> int:
+        """Absolute end time of this schedule node. """
         pass
 
     @abstractmethod
     def duration(self) -> int:
-        pass
-
-    @abstractmethod
-    def parent(self) -> Optional['ScheduleNode']:
-        pass
-
-    @abstractmethod
-    def children(self) -> List['ScheduleNode']:
+        """Duration of this schedule node. """
         pass
 
 
@@ -51,7 +69,7 @@ class TimedPulse(ScheduleNode):
     which is a leaf in a schedule tree."""
 
     def __init__(self, t0: int, pulse: Pulse, parent: ScheduleNode):
-        self._t0 = t0
+        super().__init__(t0, parent)
         self._pulse = pulse
         self._parent = parent
 
@@ -60,24 +78,21 @@ class TimedPulse(ScheduleNode):
         return self._pulse
 
     def begin_time(self) -> int:
+        """Absolute begin time of this pulse. """
         t0 = self._t0
-        parent = self._parent
-        while parent:
-            t0 += parent.t0
-            parent = parent.parent()
+        point = self._parent
+        while point:
+            t0 += point.t0
+            point = point.parent
         return t0
 
     def end_time(self) -> int:
+        """Absolute end time of this pulse. """
         return self.begin_time() + self.duration()
 
     def duration(self) -> int:
+        """Duration of this pulse. """
         return self._pulse.duration
-
-    def parent(self) -> Optional[ScheduleNode]:
-        return self._parent
-
-    def children(self) -> List[ScheduleNode]:
-        return []
 
     def __str__(self):
         return "(%s, %d)" % (self._pulse, self._t0)
@@ -88,7 +103,7 @@ class Schedule(ScheduleNode):
 
     def __init__(self,
                  device: DeviceSpecification,
-                 schedules: Tuple[int, Union[Pulse, 'Schedule']] = None,
+                 schedules: List[Tuple[int, Union[Pulse, 'Schedule']]] = None,
                  name: str = None
                  ):
         """Create schedule.
@@ -98,6 +113,7 @@ class Schedule(ScheduleNode):
             schedules:
             name:
         """
+        super().__init__(0)
         self._device = device
         self._name = name
         self._children = []
@@ -159,12 +175,6 @@ class Schedule(ScheduleNode):
 
     def duration(self) -> int:
         return self.end_time() - self.begin_time()
-
-    def children(self) -> List[ScheduleNode]:
-        return self._children
-
-    def parent(self) -> Optional[ScheduleNode]:
-        return None
 
     def _check_channels(self, pulse: Pulse):
         # check if all the channels of pulse are defined in the device

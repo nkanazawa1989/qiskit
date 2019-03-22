@@ -7,4 +7,6 @@
 
 """Schedule classes for pulse."""
 
-from .pulse_schedule import TimedPulse, TimedPulseBlock, Schedule
+from .pulse_schedule import Schedule
+from .pulses import (Pulse, DrivePulse, AcquirePulse, FrameChangePulse,
+                     PersistentValuePulse, SnapshotPulse)
