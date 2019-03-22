@@ -12,22 +12,21 @@ import logging
 import pprint
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
-from typing import List
+from typing import List, Optional, Tuple, Union
 
 from qiskit.pulse import DeviceSpecification
-from qiskit.pulse.channels import PulseChannel
 from qiskit.pulse.commands import PulseCommand, SamplePulse
 from qiskit.pulse.exceptions import ScheduleError
+from .pulses import Pulse
 
 logger = logging.getLogger(__name__)
 
 
-class TimedPulseBlock(metaclass=ABCMeta):
-    """
-    Common interface of TimedPulse and PulseSchedule (Component in the Composite Pattern)."""
+class ScheduleNode(metaclass=ABCMeta):
+    """Common interface for nodes of a schedule tree. """
 
     @abstractmethod
-    def start_time(self) -> int:
+    def begin_time(self) -> int:
         pass
 
     @abstractmethod
@@ -39,55 +38,80 @@ class TimedPulseBlock(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def children(self) -> List['TimedPulseBlock']:
+    def parent(self) -> Optional['ScheduleNode']:
+        pass
+
+    @abstractmethod
+    def children(self) -> List['ScheduleNode']:
         pass
 
 
-class TimedPulse(TimedPulseBlock):
-    """TimedPulse = Pulse with start time context."""
+class TimedPulse(ScheduleNode):
+    """A `Pulse` with begin time relative to its parent,
+    which is a leaf in a schedule tree."""
 
-    def __init__(self, pulse_command: PulseCommand, to_channel: PulseChannel, start_time: int):
-        if isinstance(pulse_command, to_channel.__class__.supported):
-            self.command = pulse_command
-            self.channel = to_channel
-            self.t0 = start_time
-        else:
-            raise ScheduleError("%s (%s) is not supported on %s (%s)" % (
-                                pulse_command.__class__.__name__, pulse_command.name,
-                                to_channel.__class__.__name__, to_channel.name))
+    def __init__(self, t0: int, pulse: Pulse, parent: ScheduleNode):
+        self._t0 = t0
+        self._pulse = pulse
+        self._parent = parent
 
-    def start_time(self) -> int:
-        return self.t0
+    @property
+    def pulse(self) -> Pulse:
+        return self._pulse
+
+    def begin_time(self) -> int:
+        t0 = self._t0
+        parent = self._parent
+        while parent:
+            t0 += parent.t0
+            parent = parent.parent()
+        return t0
 
     def end_time(self) -> int:
-        return self.t0 + self.command.duration
+        return self.begin_time() + self.duration()
 
     def duration(self) -> int:
-        return self.command.duration
+        return self._pulse.duration
 
-    def children(self) -> List[TimedPulseBlock]:
-        return None
+    def parent(self) -> Optional[ScheduleNode]:
+        return self._parent
+
+    def children(self) -> List[ScheduleNode]:
+        return []
 
     def __str__(self):
-        return "(%s, %s, %d)" % (self.command.name, self.channel.name, self.t0)
+        return "(%s, %d)" % (self._pulse, self._t0)
 
 
-class Schedule(TimedPulseBlock):
-    """Schedule."""
+class Schedule(ScheduleNode):
+    """Schedule of pulses with timing. The root of a schedule tree."""
 
     def __init__(self,
                  device: DeviceSpecification,
+                 schedules: Tuple[int, Union[Pulse, 'Schedule']] = None,
                  name: str = None
                  ):
-        """Create empty schedule.
+        """Create schedule.
 
         Args:
-            channels:
+            device:
+            schedules:
             name:
         """
-        self._name = name
         self._device = device
+        self._name = name
         self._children = []
+        if schedules:
+            for t0, pulse in schedules:
+                if isinstance(pulse, Pulse):
+                    # self._check_channels(pulse)
+                    self.insert(t0, pulse)
+                elif isinstance(pulse, Schedule):
+                    raise NotImplementedError("This version doesn't support schedule of schedules.")
+                    # if self._device is not pulse._device:
+                    #     raise ScheduleError("Additional schedule must have same device as self")
+                else:
+                    raise ScheduleError("Non supported class: %s", pulse.__class__.__name__)
 
     @property
     def name(self) -> str:
@@ -97,101 +121,67 @@ class Schedule(TimedPulseBlock):
     def device(self) -> DeviceSpecification:
         return self._device
 
-    def append(self, command: PulseCommand, channel: PulseChannel):
-        """Append a new pulse command on a channel at the timing
-        just after the last command finishes on the channel.
+    def insert(self, t0: int, pulse: Pulse):
+        """Insert a new pulse at `begin_time`.
 
         Args:
-            command (PulseCommand):
-            channel (PulseChannel):
+            t0:
+            pulse (Pulse):
         """
         try:
-            start_time = self.end_time()  # TODO: need to add buffer?
-            self._add(TimedPulse(command, channel, start_time))
+            self._add(TimedPulse(t0, pulse, parent=self))
         except ScheduleError as err:
-            logger.warning("Fail to append %s to %s", command, channel)
+            logger.warning("Fail to insert %s at %s", pulse, t0)
             raise ScheduleError(err.message)
 
-    def insert(self, start_time: int, command: PulseCommand, channel: PulseChannel):
-        """Insert new pulse command with `channel` at `start_time`.
+    def _add(self, child: ScheduleNode):
+        """Add a new child schedule node.
 
         Args:
-            start_time:
-            command (PulseCommand):
-            channel:
+            child:
         """
-        try:
-            self._add(TimedPulse(command, channel, start_time))
-        except ScheduleError as err:
-            logger.warning("Fail to insert %s to %s at %s", command, channel, start_time)
-            raise ScheduleError(err.message)
-
-    def _add(self, block: TimedPulseBlock):
-        """Add a new composite pulse `TimedPulseBlock`.
-
-        Args:
-            block:
-        """
-        if isinstance(block, Schedule):
-            if self._device is not block._device:
-                raise ScheduleError("Additional block must have the same device as self")
-
-        if self._is_occupied_time(block):
-            logger.warning("A pulse block is not added due to the occupied timing: %s", str(block))
+        if self._is_occupied_time(child):
+            logger.warning("A pulse is not added due to the occupied timing: %s", str(child))
             raise ScheduleError("Cannot add to occupied time slot.")
         else:
-            self._children.append(block)
+            self._children.append(child)
 
-    def start_time(self) -> int:
-        return min([self._start_time(child) for child in self._children], default=0)
+    def begin_time(self) -> int:
+        return 0
 
     def end_time(self) -> int:
-        return max([self._end_time(child) for child in self._children], default=0)
-
-    def end_time_by(self, channel: PulseChannel) -> int:
-        """End time of the occupation in this schedule on a `channel`.
-        Args:
-            channel:
-
-        Returns:
-
-        """
-        #  TODO: Handle schedule of schedules
-        end_time = 0
+        # TODO: Handle schedule of schedules
         for child in self._children:
             if not isinstance(child, TimedPulse):
-                raise NotImplementedError("This version assumes all children are TimePulse.")
-            if child.channel == channel:
-                end_time = max(end_time, child.end_time())
-        return end_time
+                raise NotImplementedError("This version assumes all children are TimedPulse.")
+        # This implementation only works for flat schedule
+        return max([child.end_time() for child in self._children], default=0)
 
     def duration(self) -> int:
-        return self.end_time() - self.start_time()
+        return self.end_time() - self.begin_time()
 
-    def children(self) -> List[TimedPulseBlock]:
+    def children(self) -> List[ScheduleNode]:
         return self._children
 
-    def _start_time(self, block: TimedPulseBlock) -> int:
-        if isinstance(block, TimedPulse):
-            return block.start_time()
-        else:
-            return min([self._start_time(child) for child in block.children()])
+    def parent(self) -> Optional[ScheduleNode]:
+        return None
 
-    def _end_time(self, block: TimedPulseBlock) -> int:
-        if isinstance(block, TimedPulse):
-            return block.end_time()
-        else:
-            return max([self._end_time(child) for child in block.children()])
+    def _check_channels(self, pulse: Pulse):
+        # check if all the channels of pulse are defined in the device
+        for ch in pulse.channels:
+            if not self._device._has_channel(ch):
+                raise ScheduleError("%s has no channel %s", ch, self._device)
 
     def _is_occupied_time(self, timed_pulse) -> bool:
         # TODO: Handle schedule of schedules
         if not isinstance(timed_pulse, TimedPulse):
-            raise NotImplementedError("This version assumes all children are TimePulse.")
-        for pulse in self.flat_pulse_sequence():
-            if pulse.channel == timed_pulse.channel:
+            raise NotImplementedError("This version assumes all children are TimedPulse.")
+        # TODO: Improve implementation
+        for tp in self.flat_pulse_sequence():
+            if tp.pulse.channels == timed_pulse.pulse.channels:
                 # interval check
-                if pulse.start_time() < timed_pulse.end_time() \
-                        and timed_pulse.start_time() < pulse.end_time():
+                if tp.begin_time() < timed_pulse.end_time() \
+                        and timed_pulse.begin_time() < tp.end_time():
                     return True
         return False
 
@@ -199,7 +189,7 @@ class Schedule(TimedPulseBlock):
         # TODO: Handle schedule of schedules
         for child in self._children:
             if not isinstance(child, TimedPulse):
-                raise NotImplementedError("This version assumes all children are TimePulse.")
+                raise NotImplementedError("This version assumes all children are TimedPulse.")
         dic = defaultdict(list)
         for c in self._children:
             dic[c.channel.name].append(str(c))
@@ -209,7 +199,7 @@ class Schedule(TimedPulseBlock):
         # TODO: Handle schedule of schedules
         for child in self._children:
             if not isinstance(child, TimedPulse):
-                raise NotImplementedError("This version assumes all children are TimePulse.")
+                raise NotImplementedError("This version assumes all children are TimedPulse.")
         # TODO: Improve implementation (compute at add and remove would be better)
         lib = []
         for tp in self._children:
@@ -222,5 +212,5 @@ class Schedule(TimedPulseBlock):
         # TODO: Handle schedule of schedules
         for child in self._children:
             if not isinstance(child, TimedPulse):
-                raise NotImplementedError("This version assumes all children are TimePulse.")
+                raise NotImplementedError("This version assumes all children are TimedPulse.")
         return self._children
