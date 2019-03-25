@@ -12,7 +12,7 @@
 import numpy as np
 
 from qiskit.pulse import DeviceSpecification, Qubit
-from qiskit.pulse.channels import DriveChannel, AcquireChannel
+from qiskit.pulse.channels import DriveChannel, AcquireChannel, RegisterSlot
 from qiskit.pulse.commands import function
 from qiskit.pulse.schedule import Schedule, DrivePulse, FrameChangePulse, AcquirePulse
 from qiskit.test import QiskitTestCase
@@ -37,7 +37,8 @@ class TestSchedule(QiskitTestCase):
             Qubit(0, drive_channels=[DriveChannel(0, 1.2)], acquire_channels=[AcquireChannel(0)]),
             Qubit(1, drive_channels=[DriveChannel(1, 3.4)], acquire_channels=[AcquireChannel(1)])
         ]
-        device = DeviceSpecification(qubits)
+        registers = [RegisterSlot(i) for i in range(2)]
+        device = DeviceSpecification(qubits, registers)
 
         schedule = Schedule(device, [
             (0, DrivePulse(gp0, device.q[0].drive)),
