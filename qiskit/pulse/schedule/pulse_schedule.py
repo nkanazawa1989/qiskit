@@ -98,12 +98,12 @@ class TimedPulse(ScheduleNode):
         return "(%s, %d)" % (self._pulse, self._t0)
 
 
-class Schedule(ScheduleNode):
+class Schedule(ScheduleNode, Pulse):
     """Schedule of pulses with timing. The root of a schedule tree."""
 
     def __init__(self,
                  device: DeviceSpecification,
-                 schedules: List[Tuple[int, Union[Pulse, 'Schedule']]] = None,
+                 schedules: List[Tuple[int, Pulse]] = None,
                  name: str = None
                  ):
         """Create schedule.
@@ -119,15 +119,13 @@ class Schedule(ScheduleNode):
         self._children = []
         if schedules:
             for t0, pulse in schedules:
-                if isinstance(pulse, Pulse):
-                    # self._check_channels(pulse)
-                    self.insert(t0, pulse)
-                elif isinstance(pulse, Schedule):
-                    raise NotImplementedError("This version doesn't support schedule of schedules.")
+                if isinstance(pulse, Schedule):
                     # if self._device is not pulse._device:
                     #     raise ScheduleError("Additional schedule must have same device as self")
-                else:
+                    raise NotImplementedError("This version doesn't support schedule of schedules.")
+                elif not isinstance(pulse, Pulse):
                     raise ScheduleError("Non supported class: %s", pulse.__class__.__name__)
+                self.insert(t0, pulse)
 
     @property
     def name(self) -> str:
@@ -150,6 +148,20 @@ class Schedule(ScheduleNode):
             logger.warning("Fail to insert %s at %s", pulse, t0)
             raise ScheduleError(err.message)
 
+    def append(self, pulse: Pulse):
+        """Append a new pulse on a channel at the timing
+        just after the last pulse finishes.
+
+        Args:
+            pulse (Pulse):
+        """
+        try:
+            t0 = self.end_time()
+            self._add(TimedPulse(t0, pulse, parent=self))
+        except ScheduleError as err:
+            logger.warning("Fail to append %s", pulse)
+            raise ScheduleError(err.message)
+
     def _add(self, child: ScheduleNode):
         """Add a new child schedule node.
 
@@ -169,7 +181,7 @@ class Schedule(ScheduleNode):
         # TODO: Handle schedule of schedules
         for child in self._children:
             if not isinstance(child, TimedPulse):
-                raise NotImplementedError("This version assumes all children are TimedPulse.")
+                raise NotImplementedError("This version doesn't support schedule of schedules.")
         # This implementation only works for flat schedule
         return max([child.end_time() for child in self._children], default=0)
 
@@ -179,13 +191,13 @@ class Schedule(ScheduleNode):
     def _check_channels(self, pulse: Pulse):
         # check if all the channels of pulse are defined in the device
         for ch in pulse.channels:
-            if not self._device._has_channel(ch):
+            if not self._device.has_channel(ch):
                 raise ScheduleError("%s has no channel %s", ch, self._device)
 
     def _is_occupied_time(self, timed_pulse) -> bool:
         # TODO: Handle schedule of schedules
         if not isinstance(timed_pulse, TimedPulse):
-            raise NotImplementedError("This version assumes all children are TimedPulse.")
+            raise NotImplementedError("This version doesn't support schedule of schedules.")
         # TODO: Improve implementation
         for tp in self.flat_pulse_sequence():
             if tp.pulse.channels == timed_pulse.pulse.channels:
@@ -199,7 +211,7 @@ class Schedule(ScheduleNode):
         # TODO: Handle schedule of schedules
         for child in self._children:
             if not isinstance(child, TimedPulse):
-                raise NotImplementedError("This version assumes all children are TimedPulse.")
+                raise NotImplementedError("This version doesn't support schedule of schedules.")
         dic = defaultdict(list)
         for c in self._children:
             dic[c.channel.name].append(str(c))
@@ -209,8 +221,7 @@ class Schedule(ScheduleNode):
         # TODO: Handle schedule of schedules
         for child in self._children:
             if not isinstance(child, TimedPulse):
-                raise NotImplementedError("This version assumes all children are TimedPulse.")
-        # TODO: Improve implementation (compute at add and remove would be better)
+                raise NotImplementedError("This version doesn't support schedule of schedules.")
         lib = []
         for tp in self._children:
             if isinstance(tp.command, SamplePulse) and \
@@ -222,5 +233,5 @@ class Schedule(ScheduleNode):
         # TODO: Handle schedule of schedules
         for child in self._children:
             if not isinstance(child, TimedPulse):
-                raise NotImplementedError("This version assumes all children are TimedPulse.")
+                raise NotImplementedError("This version doesn't support schedule of schedules.")
         return self._children
