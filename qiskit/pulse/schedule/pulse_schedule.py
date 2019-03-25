@@ -18,6 +18,7 @@ from qiskit.pulse import DeviceSpecification
 from qiskit.pulse.commands import PulseCommand, SamplePulse
 from qiskit.pulse.exceptions import ScheduleError
 from .pulses import Pulse
+from .timeslots import TimeslotOccupancy
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +93,7 @@ class TimedPulse(ScheduleNode):
 
     def duration(self) -> int:
         """Duration of this pulse. """
-        return self._pulse.duration
+        return self._pulse.duration()
 
     def __str__(self):
         return "(%s, %d)" % (self._pulse, self._t0)
@@ -116,16 +117,16 @@ class Schedule(ScheduleNode, Pulse):
         super().__init__(0)
         self._device = device
         self._name = name
+        self._occupancy = TimeslotOccupancy(timeslots=[])
         self._children = []
         if schedules:
             for t0, pulse in schedules:
                 if isinstance(pulse, Schedule):
-                    # if self._device is not pulse._device:
-                    #     raise ScheduleError("Additional schedule must have same device as self")
                     raise NotImplementedError("This version doesn't support schedule of schedules.")
-                elif not isinstance(pulse, Pulse):
-                    raise ScheduleError("Non supported class: %s", pulse.__class__.__name__)
-                self.insert(t0, pulse)
+                elif isinstance(pulse, Pulse):
+                    self.insert(t0, pulse)
+                else:
+                    raise ScheduleError("Invalid to be scheduled: %s", pulse.__class__.__name__)
 
     @property
     def name(self) -> str:
@@ -142,11 +143,19 @@ class Schedule(ScheduleNode, Pulse):
             t0:
             pulse (Pulse):
         """
-        try:
-            self._add(TimedPulse(t0, pulse, parent=self))
-        except ScheduleError as err:
-            logger.warning("Fail to insert %s at %s", pulse, t0)
-            raise ScheduleError(err.message)
+        # self._check_channels(pulse)
+        if isinstance(pulse, Schedule):
+            raise NotImplementedError("This version doesn't support schedule of schedules.")
+        elif isinstance(pulse, Pulse):
+            shifted = pulse.occupancy.shifted(t0)
+            if self._occupancy.is_mergeable_with(shifted):
+                self._occupancy = self._occupancy.merged(shifted)
+                self._children.append(TimedPulse(t0, pulse, parent=self))
+            else:
+                logger.warning("Fail to insert %s at %s due to timing overlap", pulse, t0)
+                raise ScheduleError("Fail to insert %s at %s due to overlap" % (str(pulse), t0))
+        else:
+            raise ScheduleError("Invalid to be inserted: %s", pulse.__class__.__name__)
 
     def append(self, pulse: Pulse):
         """Append a new pulse on a channel at the timing
@@ -155,24 +164,18 @@ class Schedule(ScheduleNode, Pulse):
         Args:
             pulse (Pulse):
         """
-        try:
+        # self._check_channels(pulse)
+        if isinstance(pulse, Schedule):
+            raise NotImplementedError("This version doesn't support schedule of schedules.")
+        elif isinstance(pulse, Pulse):
             t0 = self.end_time()
-            self._add(TimedPulse(t0, pulse, parent=self))
-        except ScheduleError as err:
-            logger.warning("Fail to append %s", pulse)
-            raise ScheduleError(err.message)
-
-    def _add(self, child: ScheduleNode):
-        """Add a new child schedule node.
-
-        Args:
-            child:
-        """
-        if self._is_occupied_time(child):
-            logger.warning("A pulse is not added due to the occupied timing: %s", str(child))
-            raise ScheduleError("Cannot add to occupied time slot.")
+            try:
+                self.insert(t0, pulse)
+            except ScheduleError:
+                logger.warning("Fail to append %s due to timing overlap", pulse)
+                raise ScheduleError("Fail to append %s due to overlap" % str(pulse))
         else:
-            self._children.append(child)
+            raise ScheduleError("Invalid to be appended: %s", pulse.__class__.__name__)
 
     def begin_time(self) -> int:
         return 0
@@ -186,26 +189,18 @@ class Schedule(ScheduleNode, Pulse):
         return max([child.end_time() for child in self._children], default=0)
 
     def duration(self) -> int:
-        return self.end_time() - self.begin_time()
+        return self.end_time()
 
     def _check_channels(self, pulse: Pulse):
-        # check if all the channels of pulse are defined in the device
-        for ch in pulse.channels:
-            if not self._device.has_channel(ch):
-                raise ScheduleError("%s has no channel %s", ch, self._device)
-
-    def _is_occupied_time(self, timed_pulse) -> bool:
-        # TODO: Handle schedule of schedules
-        if not isinstance(timed_pulse, TimedPulse):
+        if isinstance(pulse, Schedule):
+            # if pulse._device != self._device:
+            #     raise ScheduleError("Additional schedule must have same device as self")
             raise NotImplementedError("This version doesn't support schedule of schedules.")
-        # TODO: Improve implementation
-        for tp in self.flat_pulse_sequence():
-            if tp.pulse.channels == timed_pulse.pulse.channels:
-                # interval check
-                if tp.begin_time() < timed_pulse.end_time() \
-                        and timed_pulse.begin_time() < tp.end_time():
-                    return True
-        return False
+        else:
+            # check if all the channels of pulse are defined in the device
+            for ch in pulse.channelset:
+                if not self._device.has_channel(ch):
+                    raise ScheduleError("%s has no channel %s", self._device, ch)
 
     def __str__(self):
         # TODO: Handle schedule of schedules
