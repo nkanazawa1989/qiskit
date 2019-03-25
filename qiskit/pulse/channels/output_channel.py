@@ -49,6 +49,9 @@ class OutputChannel(PulseChannel):
             return True
         return False
 
+    def __hash__(self):
+        return hash((super().__hash__(), self._lo_frequency))
+
 
 class DriveChannel(OutputChannel):
     """Drive Channel."""
@@ -62,6 +65,9 @@ class DriveChannel(OutputChannel):
             index (int): Index of the channel.
         """
         super().__init__(index, lo_frequency)
+
+    def __hash__(self):
+        return super().__hash__()
 
 
 class ControlChannel(OutputChannel):
@@ -77,6 +83,9 @@ class ControlChannel(OutputChannel):
         """
         super().__init__(index, lo_frequency)
 
+    def __hash__(self):
+        return super().__hash__()
+
 
 class MeasureChannel(OutputChannel):
     """Measure Channel."""
@@ -90,3 +99,6 @@ class MeasureChannel(OutputChannel):
             index (int): Index of the channel.
         """
         super().__init__(index, lo_frequency)
+
+    def __hash__(self):
+        return super().__hash__()

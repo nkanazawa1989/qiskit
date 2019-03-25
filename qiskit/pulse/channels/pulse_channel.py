@@ -38,6 +38,9 @@ class PulseChannel(metaclass=ABCMeta):
             return True
         return False
 
+    def __hash__(self):
+        return hash((type(self), self._index))
+
 
 class AcquireChannel(PulseChannel):
     """Acquire channel."""
@@ -53,6 +56,9 @@ class AcquireChannel(PulseChannel):
         """
         super().__init__(index)
 
+    def __hash__(self):
+        return super().__hash__()
+
 
 class SnapshotChannel(PulseChannel):
     """Snapshot channel."""
@@ -63,6 +69,9 @@ class SnapshotChannel(PulseChannel):
     def __init__(self):
         """Create new snapshot channel."""
         super().__init__(0)
+
+    def __hash__(self):
+        return super().__hash__()
 
 
 class MemorySlot(PulseChannel):
@@ -79,6 +88,9 @@ class MemorySlot(PulseChannel):
         """
         super().__init__(index)
 
+    def __hash__(self):
+        return super().__hash__()
+
 
 class RegisterSlot(PulseChannel):
     """Classical resister slot channel."""
@@ -93,3 +105,6 @@ class RegisterSlot(PulseChannel):
             index (int): Index of the channel.
         """
         super().__init__(index)
+
+    def __hash__(self):
+        return super().__hash__()
