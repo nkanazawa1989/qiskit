@@ -12,16 +12,16 @@ import numpy
 import sympy
 
 from qiskit.circuit.quantumcircuit import QuantumCircuit
-from qiskit.pulse import Schedule, Snapshot
+from qiskit.compiler.run_config import RunConfig
+from qiskit.exceptions import QiskitError
+from qiskit.pulse import ConfiguredSchedule, Snapshot
 from qiskit.pulse.commands import (DriveInstruction, FrameChangeInstruction,
                                    PersistentValueInstruction, AcquireInstruction)
-from qiskit.compiler.run_config import RunConfig
 from qiskit.qobj import (QasmQobj, PulseQobj, QobjExperimentHeader, QobjHeader,
                          QasmQobjInstruction, QasmQobjExperimentConfig, QasmQobjExperiment,
                          QasmQobjConfig, QobjConditional,
                          PulseQobjInstruction, PulseQobjExperimentConfig, PulseQobjExperiment,
                          PulseQobjConfig, QobjPulseLibrary, QobjMeasurementOption)
-from qiskit.exceptions import QiskitError
 
 
 def assemble_circuits(circuits, run_config=None, qobj_header=None, qobj_id=None):
@@ -132,7 +132,7 @@ def assemble_schedules(schedules, dict_config, dict_header):
     """Assembles a list of circuits into a qobj which can be run on the backend.
 
     Args:
-        schedules (list[Schedule] or PulseSchedule): schedules to assemble
+        schedules (list[ConfiguredSchedule] or ConfiguredSchedule): schedules to assemble
         dict_config (dict): configuration of experiments
         dict_header (dict): header to pass to the results
 
@@ -142,40 +142,31 @@ def assemble_schedules(schedules, dict_config, dict_header):
     Raises:
         QiskitError: when invalid command is provided
     """
-    if isinstance(schedules, Schedule):
+    if isinstance(schedules, ConfiguredSchedule):
         schedules = [schedules]
 
     experiments = []
 
-    for ii, schedule in enumerate(schedules):
+    # use LO frequency configs
+    default_qubit_lo_freq = dict_config.get('qubit_lo_freq', None)
+    default_meas_lo_freq = dict_config.get('meas_lo_freq', None)
 
-        # use LO frequency configs
-        default_qubit_lo_freq = dict_config.get('qubit_lo_freq', None)
-        default_meas_lo_freq = dict_config.get('meas_lo_freq', None)
+    user_pulselib = set()
+    for ii, configed in enumerate(schedules):
+        schedule = configed.schedule
 
-        # TODO: scheudle has no information of LO frequency
-        # lo_freqs = {}
-        # user_qubit_lo_freq = [q.drive.lo_frequency for q in schedule.device.q]
-        # if default_qubit_lo_freq:
-        #     if default_qubit_lo_freq != user_qubit_lo_freq:
-        #         lo_freqs['qubit_lo_freq'] = user_qubit_lo_freq
-        # else:
-        #     lo_freqs['qubit_lo_freq'] = user_qubit_lo_freq
-        # user_meas_lo_freq = [q.measure.lo_frequency for q in schedule.device.q]
-        # if default_meas_lo_freq:
-        #     if default_meas_lo_freq != user_meas_lo_freq:
-        #         lo_freqs['meas_lo_freq'] = user_meas_lo_freq
-        # else:
-        #     lo_freqs['meas_lo_freq'] = user_meas_lo_freq
+        lo_freqs = {
+            'qubit_lo_freq': configed.lo_config.replaced(default_qubit_lo_freq),
+            'meas_lo_freq': configed.lo_config.replaced(default_meas_lo_freq),
+        }
 
         # generate experimental configuration
         experimentconfig = PulseQobjExperimentConfig(**lo_freqs)
 
         # generate experimental header
-        experimentheader = QobjExperimentHeader(name=schedule.name or 'Schedule-%d' % ii)
+        experimentheader = QobjExperimentHeader(name=configed.name or 'Experiment-%d' % ii)
 
         commands = []
-        user_pulselib = []
         for block in schedule.flat_instruction_sequence():
             pulse_instr = block.instruction
             current_command = PulseQobjInstruction(name=pulse_instr.name,
@@ -186,8 +177,7 @@ def assemble_schedules(schedules, dict_config, dict_header):
                 # optional:
                 current_command.ch = pulse_instr.channel.name
                 # TODO: support conditional gate
-                if pulse_instr.command not in [p for p in user_pulselib]:
-                    user_pulselib.append(pulse_instr.command)
+                user_pulselib.add(pulse_instr.command)
             elif isinstance(pulse_instr, FrameChangeInstruction):
                 # Frame change
                 # required: `ch`, `phase`

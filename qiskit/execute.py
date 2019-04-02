@@ -19,8 +19,10 @@ running quickly we have provider this wrapper module.
 import logging
 import warnings
 
-from qiskit.compiler import assemble_circuits, assemble_schedules, transpile
 from qiskit.compiler import RunConfig, TranspileConfig
+from qiskit.compiler import assemble_circuits, assemble_schedules, transpile
+from qiskit.exceptions import QiskitError
+from qiskit.pulse import Schedule, ConfiguredSchedule, LoConfig
 from qiskit.qobj import QobjHeader
 
 logger = logging.getLogger(__name__)
@@ -133,12 +135,13 @@ def execute_circuits(circuits, backend, qobj_header=None,
     return backend.run(qobj, **kwargs)
 
 
-def execute_schedules(schedules, backend, **kwargs):
+def execute_schedules(schedules, backend, user_lo_configs=None, **kwargs):
     """Executes a list of circuits.
 
     Args:
-        schedules (PulseSchedule or list[PulseSchedule]): schedules to execute
+        schedules (Schedule or list[Schedule]): schedules to execute
         backend (BaseBackend): a backend to execute the schedules on
+        user_lo_configs (LoConfig or list[LoConfig]): User LO configurations
 
     Keyword Args:
         shots (int): number of repetitions of each circuit, for sampling
@@ -158,6 +161,16 @@ def execute_schedules(schedules, backend, **kwargs):
     Returns:
         BaseJob: returns job instance derived from BaseJob
     """
+    if user_lo_configs:
+        if isinstance(user_lo_configs, LoConfig):
+            user_lo_configs = [user_lo_configs]
+        if isinstance(schedules, Schedule):
+            experiments = [ConfiguredSchedule(schedules, lo_conf) for lo_conf in user_lo_configs]
+        else:
+            raise QiskitError("A common schedule must be specified to use experiment_configs.")
+    else:
+        experiments = [ConfiguredSchedule(sched) for sched in schedules]
+
     backend_config = backend.configuration()
 
     # filling in the config with backend defaults and user defined
@@ -179,6 +192,6 @@ def execute_schedules(schedules, backend, **kwargs):
         'backend_version': backend_config.backend_version
     }
 
-    qobj = assemble_schedules(schedules=schedules, dict_header=header, dict_config=config)
+    qobj = assemble_schedules(schedules=experiments, dict_header=header, dict_config=config)
 
     return backend.run(qobj)
