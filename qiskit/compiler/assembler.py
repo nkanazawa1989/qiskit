@@ -157,7 +157,7 @@ def assemble_schedules(schedules, dict_config, dict_header):
 
         lo_freqs = {
             'qubit_lo_freq': configed.lo_config.replaced(default_qubit_lo_freq),
-            'meas_lo_freq': configed.lo_config.replaced(default_meas_lo_freq),
+            'meas_lo_freq': configed.lo_config.replaced(default_meas_lo_freq)
         }
 
         # generate experimental configuration

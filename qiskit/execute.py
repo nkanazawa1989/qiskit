@@ -167,7 +167,7 @@ def execute_schedules(schedules, backend, user_lo_configs=None, **kwargs):
         if isinstance(schedules, Schedule):
             experiments = [ConfiguredSchedule(schedules, lo_conf) for lo_conf in user_lo_configs]
         else:
-            raise QiskitError("A common schedule must be specified to use experiment_configs.")
+            raise QiskitError("A common schedule must be specified to use user_lo_configs.")
     else:
         experiments = [ConfiguredSchedule(sched) for sched in schedules]
 
