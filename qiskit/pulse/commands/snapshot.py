@@ -11,6 +11,7 @@ Snapshot.
 
 from qiskit.pulse.channels import SnapshotChannel
 from qiskit.pulse.common.command_schedule import PrimitiveInstruction
+from qiskit.pulse.common.interfaces import Instruction
 from qiskit.pulse.common.timeslots import TimeslotOccupancy
 from .pulse_command import PulseCommand
 
@@ -68,6 +69,9 @@ class Snapshot(PulseCommand, PrimitiveInstruction):
     def channel(self) -> SnapshotChannel:
         """Snapshot channel. """
         return self._channel
+
+    def to(self) -> Instruction:
+        return self
 
     def __repr__(self):
         return '%s(%s, %s) >> %s' % (self.__class__.__name__, self.label, self.type, self._channel)

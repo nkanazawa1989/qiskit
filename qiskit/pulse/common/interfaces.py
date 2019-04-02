@@ -34,6 +34,11 @@ class Instruction(metaclass=ABCMeta):
         """Return timed instruction. """
         pass
 
+    @abstractmethod
+    def __lshift__(self, begin_time: int) -> 'TimedInstruction':
+        """Return timed instruction. """
+        pass
+
 
 class ScheduleNode(metaclass=ABCMeta):
     """Common interface for nodes of a schedule tree. """

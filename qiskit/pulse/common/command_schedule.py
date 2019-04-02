@@ -33,13 +33,13 @@ class PrimitiveInstruction(Instruction):
         """Occupied time slots by this instruction. """
         pass
 
-    def at(self, begin_time: int):
+    def at(self, begin_time: int) -> TimedInstruction:
         """Return timed instruction. """
         return CommandSchedule(begin_time, self)
 
-    def __or__(self, begin_time: int):
+    def __lshift__(self, begin_time: int) -> TimedInstruction:
         """Return timed instruction. """
-        return CommandSchedule(begin_time, self)
+        return self.at(begin_time)
 
 
 class CommandSchedule(TimedInstruction):

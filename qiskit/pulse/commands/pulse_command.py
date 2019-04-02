@@ -11,6 +11,7 @@ Base command.
 from abc import ABCMeta, abstractmethod
 
 from qiskit.pulse.exceptions import PulseError
+from qiskit.pulse.common.interfaces import Instruction
 
 
 class PulseCommand(metaclass=ABCMeta):
@@ -43,6 +44,11 @@ class PulseCommand(metaclass=ABCMeta):
     def name(self) -> str:
         """Name of this command. """
         return self._name
+
+    @abstractmethod
+    def to(self, **kwargs) -> Instruction:
+        """Create instruction from this command. """
+        pass
 
     def __eq__(self, other):
         """Two PulseCommands are the same if they are of the same type

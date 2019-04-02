@@ -56,18 +56,17 @@ class Schedule(Instruction, TimedInstruction):
     def name(self) -> str:
         return self._name
 
-    def inserted(self, begin_time: int, instruction: Instruction):
-        """Return a new schedule with inserting an instruction at `begin_time`.
+    def inserted(self, block: TimedInstruction):
+        """Return a new schedule with inserting an instruction with timing.
 
         Args:
-            begin_time: begin time of the instruction
-            instruction (Instruction): instruction to be inserted
+            block (TimedInstruction): instruction with timing to be inserted
         """
-        if not isinstance(instruction, Instruction):
-            raise PulseError("Invalid to be inserted: %s" % instruction.__class__.__name__)
+        if not isinstance(block, TimedInstruction):
+            raise PulseError("Invalid to be inserted: %s" % block.__class__.__name__)
         news = copy.copy(self)
         try:
-            news._insert(begin_time, instruction)
+            news._insert(block.begin_time, block.instruction)
         except PulseError as err:
             raise PulseError(err.message)
         return news
@@ -135,16 +134,14 @@ class Schedule(Instruction, TimedInstruction):
     def at(self, begin_time: int) -> TimedInstruction:
         return SubSchedule(begin_time, self)
 
-    def __or__(self, begin_time: int):
-        return SubSchedule(begin_time, self)
+    def __lshift__(self, begin_time: int):
+        return self.at(begin_time)
 
-    def __add__(self, block: Union[Instruction, TimedInstruction]):
-        if isinstance(block, Instruction):
-            return self.appended(block)
-        elif isinstance(block, TimedInstruction):
-            return self.inserted(block.begin_time, block.instruction)
-        else:
-            raise PulseError("Invalid to be added: %s" % block.__class__.__name__)
+    def __or__(self, instruction: Instruction):
+        return self.appended(instruction)
+
+    def __add__(self, block: TimedInstruction):
+        return self.inserted(block)
 
     def __str__(self):
         # TODO: Handle schedule of schedules
