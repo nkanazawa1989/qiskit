@@ -7,4 +7,6 @@
 
 """Schedule classes for pulse."""
 
+from .configured_schedule import ConfiguredSchedule
+from .experiment_config import LoConfig
 from .pulse_schedule import SubSchedule, Schedule
