@@ -155,10 +155,16 @@ def assemble_schedules(schedules, dict_config, dict_header):
     for ii, configed in enumerate(schedules):
         schedule = configed.schedule
 
-        lo_freqs = {
-            'qubit_lo_freq': configed.lo_config.replaced(default_qubit_lo_freq),
-            'meas_lo_freq': configed.lo_config.replaced(default_meas_lo_freq)
-        }
+        lo_freqs = {}
+        if configed.config and configed.config.user_lo_dic:
+            if default_qubit_lo_freq:
+                user_qubit_los = configed.config.replaced_with_user_los(default_qubit_lo_freq)
+                if user_qubit_los != default_qubit_lo_freq:
+                    lo_freqs['qubit_lo_freq'] = user_qubit_los
+            if default_meas_lo_freq:
+                user_meas_los = configed.config.replaced_with_user_los(default_meas_lo_freq)
+                if user_meas_los != default_meas_lo_freq:
+                    lo_freqs['meas_lo_freq'] = user_meas_los
 
         # generate experimental configuration
         experimentconfig = PulseQobjExperimentConfig(**lo_freqs)
