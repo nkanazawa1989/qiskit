@@ -109,13 +109,13 @@ class TestQubit(QiskitTestCase):
         qubit = Qubit(1,
                       drive_channels=[DriveChannel(2, 1.2)],
                       control_channels=[ControlChannel(3)],
-                      measure_channels=[MeasureChannel(4)],
-                      acquire_channels=[AcquireChannel(5)])
+                      measure_channels=[MeasureChannel(4)])
 
         self.assertEqual(qubit.drive, DriveChannel(2, 1.2))
         self.assertEqual(qubit.control, ControlChannel(3))
         self.assertEqual(qubit.measure, MeasureChannel(4))
-        self.assertEqual(qubit.acquire, AcquireChannel(5))
+        self.assertEqual(qubit.acquire, AcquireChannel(1))
+        self.assertEqual(qubit.mem_slot, MemorySlot(1))
 
 
 class TestDeviceSpecification(QiskitTestCase):
@@ -125,15 +125,14 @@ class TestDeviceSpecification(QiskitTestCase):
         """Test default device specification.
         """
         qubits = [
-            Qubit(0, drive_channels=[DriveChannel(0, 1.2)], acquire_channels=[AcquireChannel(0)]),
-            Qubit(1, drive_channels=[DriveChannel(1, 3.4)], acquire_channels=[AcquireChannel(1)])
+            Qubit(0, drive_channels=[DriveChannel(0, 1.2)], acquire_channel=AcquireChannel(0)),
+            Qubit(1, drive_channels=[DriveChannel(1, 3.4)], acquire_channel=AcquireChannel(1))
         ]
         registers = [RegisterSlot(i) for i in range(2)]
         spec = DeviceSpecification(qubits, registers)
 
         self.assertEqual(spec.q[0].drive, DriveChannel(0, 1.2))
         self.assertEqual(spec.q[1].acquire, AcquireChannel(1))
-        self.assertEqual(spec.mem[0], MemorySlot(0))
         self.assertEqual(spec.c[1], RegisterSlot(1))
 
     def test_creation_from_backend_with_zero_u_channels(self):

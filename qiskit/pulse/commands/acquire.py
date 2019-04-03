@@ -6,11 +6,11 @@
 # the LICENSE.txt file in the root directory of this source tree.
 
 """
-Acquire.
+Acquire command and instruction.
 """
 from typing import Union, List
 
-from qiskit.pulse.channels import Qubit, MemorySlot, RegisterSlot
+from qiskit.pulse.channels import Qubit, RegisterSlot
 from qiskit.pulse.common.interfaces import Instruction
 from qiskit.pulse.common.timeslots import Interval, Timeslot, TimeslotOccupancy
 from qiskit.pulse.exceptions import PulseError
@@ -76,9 +76,8 @@ class Acquire(PulseCommand):
 
     def __call__(self,
                  qubits: Union[Qubit, List[Qubit]],
-                 mem_slots: Union[MemorySlot, List[MemorySlot]],
                  reg_slots: Union[RegisterSlot, List[RegisterSlot]] = None) -> 'AcquireInstruction':
-        return AcquireInstruction(self, qubits, mem_slots, reg_slots)
+        return AcquireInstruction(self, qubits, reg_slots)
 
 
 class AcquireInstruction(Instruction):
@@ -87,15 +86,9 @@ class AcquireInstruction(Instruction):
     def __init__(self,
                  command: Acquire,
                  qubits: Union[Qubit, List[Qubit]],
-                 mem_slots: Union[MemorySlot, List[MemorySlot]],
                  reg_slots: Union[RegisterSlot, List[RegisterSlot]] = None):
         if isinstance(qubits, Qubit):
             qubits = [qubits]
-        if mem_slots:
-            if isinstance(mem_slots, MemorySlot):
-                mem_slots = [mem_slots]
-            elif len(qubits) != len(mem_slots):
-                raise PulseError("#mem_slots must be equals to #qubits")
         if reg_slots:
             if isinstance(reg_slots, RegisterSlot):
                 reg_slots = [reg_slots]
@@ -105,11 +98,11 @@ class AcquireInstruction(Instruction):
             reg_slots = []
         self._command = command
         self._acquire_channels = [q.acquire for q in qubits]
-        self._mem_slots = mem_slots
+        self._qubits = qubits
         self._reg_slots = reg_slots
         # TODO: more precise time-slots
         slots = [Timeslot(Interval(0, command.duration), q.acquire) for q in qubits]
-        slots.extend([Timeslot(Interval(0, command.duration), mem) for mem in mem_slots])
+        slots.extend([Timeslot(Interval(0, command.duration), q.mem_slot) for q in qubits])
         self._occupancy = TimeslotOccupancy(slots)
 
     @property
@@ -127,17 +120,17 @@ class AcquireInstruction(Instruction):
 
     @property
     def acquire_channels(self):
-        """Acquire channels. """
+        """Acquire channels to be applied. """
         return self._acquire_channels
 
     @property
-    def mem_slots(self):
-        """MemorySlots. """
-        return self._mem_slots
+    def qubits(self):
+        """Qubits to be acquired. """
+        return self._qubits
 
     @property
     def reg_slots(self):
-        """RegisterSlots. """
+        """RegisterSlots in which acquired bit is stored. """
         return self._reg_slots
 
     def __repr__(self):

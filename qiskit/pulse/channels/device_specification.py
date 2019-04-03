@@ -30,7 +30,6 @@ class DeviceSpecification:
         """
         self._qubits = qubits
         self._reg_slots = registers
-        self._mem_slots = [MemorySlot(i) for i in range(len(qubits))]
 
     @classmethod
     def create_from(cls, backend):
@@ -62,7 +61,6 @@ class DeviceSpecification:
         # generate channels with assuming their numberings are aligned with qubits
         drives = [DriveChannel(i, qubit_lo_freqs[i]) for i in range(n_qubits)]   # TODO: lo_ranges
         measures = [MeasureChannel(i, meas_lo_freqs[i]) for i in range(n_qubits)]  # TODO: lo_ranges
-        acquires = [AcquireChannel(i) for i in range(n_qubits)]
         controls = [ControlChannel(i) for i in range(n_uchannels)]
 
         qubits = []
@@ -70,8 +68,7 @@ class DeviceSpecification:
             qubit = Qubit(i,
                           drive_channels=[drives[i]],
                           control_channels=None if n_uchannels == 0 else controls[i],
-                          measure_channels=[measures[i]],
-                          acquire_channels=[acquires[i]])
+                          measure_channels=[measures[i]])
             qubits.append(qubit)
 
         registers = [RegisterSlot(i) for i in range(n_registers)]
@@ -102,8 +99,3 @@ class DeviceSpecification:
     def c(self) -> List[RegisterSlot]:
         """Return register slots in this device."""
         return self._reg_slots
-
-    @property
-    def mem(self) -> List[MemorySlot]:
-        """Return memory slots in this device."""
-        return self._mem_slots

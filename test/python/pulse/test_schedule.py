@@ -35,7 +35,7 @@ class TestSchedule(QiskitTestCase):
 
         qubits = [
             Qubit(0, drive_channels=[DriveChannel(0, 1.2)], control_channels=[ControlChannel(0)]),
-            Qubit(1, drive_channels=[DriveChannel(1, 3.4)], acquire_channels=[AcquireChannel(1)])
+            Qubit(1, drive_channels=[DriveChannel(1, 3.4)])
         ]
         registers = [RegisterSlot(i) for i in range(2)]
         device = DeviceSpecification(qubits, registers)
@@ -50,7 +50,7 @@ class TestSchedule(QiskitTestCase):
         sched.insert(60, gp0(device.q[0].control))
         sched.insert(80, Snapshot("label", "snap_type"))
         sched.insert(90, fc_pi_2(device.q[0].drive))
-        sched.insert(90, acquire(device.q[1], device.mem[1], device.c[1]))
+        sched.insert(90, acquire(device.q[1], device.c[1]))
         # print(sched)
 
         new_sched = Schedule()
@@ -64,19 +64,17 @@ class TestSchedule(QiskitTestCase):
     def test_absolute_begin_time_of_grandchild(self):
         """Test correct calculation of begin time of grandchild of a schedule.
         """
-        qubits = [
-            Qubit(0, acquire_channels=[AcquireChannel(0)]),
-        ]
+        qubits = [Qubit(0, acquire_channel=AcquireChannel(0))]
         registers = [RegisterSlot(i) for i in range(1)]
         device = DeviceSpecification(qubits, registers)
 
         acquire = Acquire(10)
         children = Schedule()
-        children.insert(20, acquire(device.q[0], device.mem[0]))   # grand child 1
-        children.append(acquire(device.q[0], device.mem[0]))       # grand child 2
+        children.insert(20, acquire(device.q[0]))   # grand child 1
+        children.append(acquire(device.q[0]))       # grand child 2
 
         sched = Schedule()
-        sched.append(acquire(device.q[0], device.mem[0]))   # child
+        sched.append(acquire(device.q[0]))   # child
         sched.append(children)
 
         begin_times = sorted([i.begin_time for i in sched.flat_instruction_sequence()])
