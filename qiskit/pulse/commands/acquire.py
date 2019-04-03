@@ -97,8 +97,8 @@ class AcquireInstruction(Instruction):
         else:
             reg_slots = []
         self._command = command
-        self._acquire_channels = [q.acquire for q in qubits]
         self._qubits = qubits
+        self._mem_slots = [q.mem_slot for q in qubits]
         self._reg_slots = reg_slots
         # TODO: more precise time-slots
         slots = [Timeslot(Interval(0, command.duration), q.acquire) for q in qubits]
@@ -119,19 +119,19 @@ class AcquireInstruction(Instruction):
         return self._command
 
     @property
-    def acquire_channels(self):
-        """Acquire channels to be applied. """
-        return self._acquire_channels
-
-    @property
     def qubits(self):
         """Qubits to be acquired. """
         return self._qubits
 
     @property
+    def mem_slots(self):
+        """MemorySlots in which acquired results are stored. """
+        return self._mem_slots
+
+    @property
     def reg_slots(self):
-        """RegisterSlots in which acquired bit is stored. """
+        """RegisterSlots in which acquired bits are stored. """
         return self._reg_slots
 
     def __repr__(self):
-        return '%s >> #AcquireChannel=%d' % (self._command, len(self._acquire_channels))
+        return '%s >> q%s' % (self._command, str([q.index for q in self._qubits]))
