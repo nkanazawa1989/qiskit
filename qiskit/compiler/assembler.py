@@ -175,37 +175,52 @@ def assemble_schedules(schedules, dict_config, dict_header):
         commands = []
         for block in schedule.flat_instruction_sequence():
             pulse_instr = block.instruction
-            current_command = PulseQobjInstruction(name=pulse_instr.command.name,
-                                                   t0=block.begin_time)
             if isinstance(pulse_instr, DriveInstruction):
                 # Sample pulses
                 # required: `ch`
                 # optional:
-                current_command.ch = pulse_instr.channel.name
+                current_command = PulseQobjInstruction(
+                    name=pulse_instr.command.name,
+                    t0=block.begin_time,
+                    ch=pulse_instr.channel.name
+                )
                 # TODO: support conditional gate
                 user_pulselib.add(pulse_instr.command)
             elif isinstance(pulse_instr, FrameChangeInstruction):
                 # Frame change
                 # required: `ch`, `phase`
                 # optional:
-                current_command.ch = pulse_instr.channel.name
-                current_command.phase = pulse_instr.command.phase
+                current_command = PulseQobjInstruction(
+                    name='fc',
+                    t0=block.begin_time,
+                    ch=pulse_instr.channel.name,
+                    phase=pulse_instr.command.phase
+                )
             elif isinstance(pulse_instr, PersistentValueInstruction):
                 # Persistent value
                 # required: `ch`, `val`
                 # optional:
-                current_command.ch = pulse_instr.channel.name
-                current_command.val = pulse_instr.command.value
+                current_command = PulseQobjInstruction(
+                    name='pv',
+                    t0=block.begin_time,
+                    ch=pulse_instr.channel.name,
+                    val=pulse_instr.command.value
+                )
             elif isinstance(pulse_instr, AcquireInstruction):
                 # Acquire
                 # required: `duration`, `qubits`, `memory_slot`
                 # optional: `discriminators`, `kernels`, `register_slot`
-                current_command.duration = pulse_instr.duration
-                current_command.qubits = [q.index for q in pulse_instr.qubits]
-                current_command.memory_slot = [mems.index for mems in pulse_instr.mem_slots]
+                current_command = PulseQobjInstruction(
+                    name='acquire',
+                    t0=block.begin_time,
+                    duration=pulse_instr.command.duration,
+                    qubits=[q.index for q in pulse_instr.qubits],
+                    memory_slot=[mems.index for mems in pulse_instr.mem_slots]
+                )
+                # add optional fields
                 meas_level = dict_config.get('meas_level', 2)
                 if meas_level == 2:
-                    # apply discriminator for level 2 measurement
+                    # apply discriminator and register_slot for level 2 measurement
                     current_command.register_slot = [regs.index for regs in pulse_instr.reg_slots]
                     _discriminator = pulse_instr.command.discriminator
                     if _discriminator:
@@ -227,8 +242,12 @@ def assemble_schedules(schedules, dict_config, dict_header):
                 # Snapshot
                 # required: `label`, `type`
                 # optional:
-                current_command.label = pulse_instr.label
-                current_command.type = pulse_instr.type
+                current_command = PulseQobjInstruction(
+                    name='snapshot',
+                    t0=block.begin_time,
+                    label=pulse_instr.command.label,
+                    type=pulse_instr.command.type
+                )
             else:
                 raise QiskitError('Invalid command is given, %s' % pulse_instr.command.name)
 

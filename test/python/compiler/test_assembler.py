@@ -115,6 +115,7 @@ class TestAssembler(QiskitTestCase):
         self.assertEqual(qobj.config.shots, 2000)
         self.assertEqual(len(qobj.experiments), 1)
         self.assertEqual(qobj.experiments[0].instructions[0].name, 'pulse0')
+        self.assertEqual(qobj.experiments[0].instructions[1].name, 'acquire')
 
 
 if __name__ == '__main__':
