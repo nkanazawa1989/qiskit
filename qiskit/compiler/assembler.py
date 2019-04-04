@@ -204,7 +204,7 @@ def assemble_schedules(schedules, dict_config, dict_header):
                     name='pv',
                     t0=block.begin_time,
                     ch=pulse_instr.channel.name,
-                    phase=pulse_instr.command.value
+                    val=pulse_instr.command.value
                 )
             elif isinstance(pulse_instr, AcquireInstruction):
                 # Acquire
