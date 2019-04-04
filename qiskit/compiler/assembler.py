@@ -147,7 +147,6 @@ def assemble_schedules(schedules, dict_config, dict_header):
 
     experiments = []
 
-    # use LO frequency configs
     default_qubit_lo_freq = dict_config.get('qubit_lo_freq', None)
     default_meas_lo_freq = dict_config.get('meas_lo_freq', None)
 
@@ -155,6 +154,7 @@ def assemble_schedules(schedules, dict_config, dict_header):
     for ii, configed in enumerate(schedules):
         schedule = configed.schedule
 
+        # use LO frequency configs
         lo_freqs = {}
         if configed.config and configed.config.user_lo_dic:
             if default_qubit_lo_freq:
@@ -175,7 +175,7 @@ def assemble_schedules(schedules, dict_config, dict_header):
         commands = []
         for block in schedule.flat_instruction_sequence():
             pulse_instr = block.instruction
-            current_command = PulseQobjInstruction(name=pulse_instr.name,
+            current_command = PulseQobjInstruction(name=pulse_instr.command.name,
                                                    t0=block.begin_time)
             if isinstance(pulse_instr, DriveInstruction):
                 # Sample pulses
@@ -201,9 +201,10 @@ def assemble_schedules(schedules, dict_config, dict_header):
                 # required: `duration`, `qubits`, `memory_slot`
                 # optional: `discriminators`, `kernels`, `register_slot`
                 current_command.duration = pulse_instr.duration
-                current_command.qubits = [acqs.index for acqs in pulse_instr.acquire_channels]
+                current_command.qubits = [q.index for q in pulse_instr.qubits]
                 current_command.memory_slot = [mems.index for mems in pulse_instr.mem_slots]
-                if dict_config.get('meas_level', 2) == 2:
+                meas_level = dict_config.get('meas_level', 2)
+                if meas_level == 2:
                     # apply discriminator for level 2 measurement
                     current_command.register_slot = [regs.index for regs in pulse_instr.reg_slots]
                     _discriminator = pulse_instr.command.discriminator
@@ -213,7 +214,7 @@ def assemble_schedules(schedules, dict_config, dict_header):
                         current_command.discriminators = [qobj_discriminator]
                     else:
                         current_command.discriminators = []
-                if dict_config.get('meas_level', 2) >= 1:
+                if meas_level >= 1:
                     # apply kernel for level 1, 2 measurements
                     _kernel = pulse_instr.command.kernel
                     if _kernel:

@@ -10,12 +10,14 @@
 import unittest
 
 import numpy as np
+import qiskit.pulse as pulse
 
 from qiskit.circuit import ClassicalRegister, QuantumCircuit, QuantumRegister
 from qiskit.compiler import RunConfig
-from qiskit.compiler import assemble_circuits
-from qiskit.qobj import QasmQobj
+from qiskit.compiler import assemble_circuits, assemble_schedules
+from qiskit.qobj import QasmQobj, PulseQobj
 from qiskit.test import QiskitTestCase
+from qiskit.test.reference_pulses import ReferenceSchedules
 
 
 class TestAssembler(QiskitTestCase):
@@ -92,6 +94,27 @@ class TestAssembler(QiskitTestCase):
         self.assertEqual(qobj.experiments[0].instructions[0].name, 'init')
         np.testing.assert_almost_equal(qobj.experiments[0].instructions[0].params,
                                        [0.7071067811865, 0, 0, 0.707106781186])
+
+    def test_assemble_single_schedule(self):
+        """Test assembling a single schedule.
+        """
+        schedule = ReferenceSchedules.nonsense()
+        config = {
+            'shots': 2000,
+            'qubit_lo_freq': [],
+            'meas_lo_freq': [],
+            'meas_level': 1,
+            'meas_return': 'avg',
+            'memory_slot_size': 100,
+            'rep_time': 1000
+        }
+        qobj = assemble_schedules(pulse.schedule.ConfiguredSchedule(schedule),
+                                  dict_header={},
+                                  dict_config=config)
+        self.assertIsInstance(qobj, PulseQobj)
+        self.assertEqual(qobj.config.shots, 2000)
+        self.assertEqual(len(qobj.experiments), 1)
+        self.assertEqual(qobj.experiments[0].instructions[0].name, 'pulse0')
 
 
 if __name__ == '__main__':
