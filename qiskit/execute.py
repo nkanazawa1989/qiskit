@@ -21,7 +21,7 @@ import warnings
 
 from qiskit.compiler import RunConfig, TranspileConfig
 from qiskit.compiler import assemble_circuits, assemble_schedules, transpile
-from qiskit.pulse.exceptions import PulseError
+from qiskit.exceptions import QiskitError
 from qiskit.pulse import Schedule, ConditionedSchedule, UserLoDict
 from qiskit.qobj import QobjHeader
 
@@ -139,8 +139,7 @@ def execute_schedules(schedules, backend, user_lo_dicts=None, **kwargs):
     """Executes a list of circuits.
 
     Args:
-        schedules (Schedule or list[Schedule] or
-            ConditionedSchedule or list[ConditionedSchedule]): schedules to execute
+        schedules (Schedule or list[Schedule]): schedules to execute
         backend (BaseBackend): a backend to execute the schedules on
         user_lo_dicts (UserLoDict or list[UserLoDict]): Dictionaries of user LO frequencies
 
@@ -162,24 +161,20 @@ def execute_schedules(schedules, backend, user_lo_dicts=None, **kwargs):
     Returns:
         BaseJob: returns job instance derived from BaseJob
     """
-    if not isinstance(schedules, list):
+    if isinstance(schedules, Schedule):
         schedules = [schedules]
 
-    if all(isinstance(sched, Schedule) for sched in schedules):
-        if user_lo_dicts:
-            # with user condition
-            if isinstance(user_lo_dicts, UserLoDict):
-                user_lo_dicts = [user_lo_dicts]
-            experiments = [ConditionedSchedule(sched, cond)
-                           for sched in schedules for cond in user_lo_dicts]
+    if user_lo_dicts:
+        if isinstance(user_lo_dicts, UserLoDict):
+            user_lo_dicts = [user_lo_dicts]
+        if len(schedules) == len(user_lo_dicts):
+            experiments = [ConditionedSchedule(sched, los)
+                           for sched, los in zip(schedules, user_lo_dicts)]
         else:
-            # no user condition
-            experiments = [ConditionedSchedule(sched) for sched in schedules]
-    elif all(isinstance(sched, ConditionedSchedule) for sched in schedules):
-        # configured
-        experiments = [sched for sched in schedules]
+            raise QiskitError('User LO configuration should be provided for each schedule.')
     else:
-        raise PulseError('Schedule and ConditionedSchedule cannot be in the same job.')
+        # no user condition
+        experiments = [ConditionedSchedule(sched) for sched in schedules]
 
     backend_config = backend.configuration()
 
