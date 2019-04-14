@@ -8,7 +8,7 @@
 """
 Configured Schedule.
 """
-from .experiment_condition import UserLoDict
+from qiskit.pulse.configurations import UserLoDict
 from .pulse_schedule import Schedule
 
 

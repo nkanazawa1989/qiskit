@@ -8,5 +8,4 @@
 """Schedule classes for pulse."""
 
 from .conditioned_schedule import ConditionedSchedule
-from .experiment_condition import UserLoDict
 from .pulse_schedule import Schedule

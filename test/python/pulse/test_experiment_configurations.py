@@ -24,8 +24,8 @@ class TestUserLoDict(QiskitTestCase):
         """Test if a UserLoDict can be created without no arguments.
         """
         user_lo_dict = self.device.create_lo_config({})
-        self.assertEqual((), user_lo_dict.qubit_lo_freq)
-        self.assertEqual((), user_lo_dict.meas_lo_freq)
+        self.assertEqual((4.9, 5.0), user_lo_dict.qubit_lo_freq)
+        self.assertEqual((6.5, 6.6), user_lo_dict.meas_lo_freq)
 
     def test_can_create_valid_user_lo_dict(self):
         """Test if a UserLoDict can be created with valid user_los.

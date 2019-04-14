@@ -21,7 +21,8 @@ import warnings
 
 from qiskit.compiler import RunConfig, TranspileConfig
 from qiskit.compiler import assemble_circuits, assemble_schedules, transpile
-from qiskit.pulse import Schedule, ConditionedSchedule, UserLoDict
+from qiskit.pulse import Schedule, ConditionedSchedule
+from qiskit.pulse.configurations import UserLoDict
 from qiskit.pulse.exceptions import PulseError
 from qiskit.qobj import QobjHeader
 

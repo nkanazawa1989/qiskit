@@ -11,7 +11,7 @@ Specification of the device.
 import logging
 from typing import List, Dict
 
-from qiskit.pulse import UserLoDict
+from qiskit.pulse.configurations import UserLoDict
 from qiskit.pulse.exceptions import PulseError
 from .output_channel import OutputChannel, DriveChannel, ControlChannel, MeasureChannel
 from .pulse_channel import AcquireChannel, MemorySlot, RegisterSlot
