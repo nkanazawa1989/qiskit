@@ -8,25 +8,22 @@
 """
 Configurations for pulse experiments.
 """
-from typing import Dict
-
-from qiskit.pulse.channels import OutputChannel
-from qiskit.pulse.exceptions import PulseError
+from typing import List
 
 
 class UserLoDict:
     """Dictionary of user LO frequency by channel"""
 
-    def __init__(self, user_lo_dic: Dict[OutputChannel, float] = None):
-        self._user_lo_dic = {}
-        if user_lo_dic:
-            for channel, user_lo in user_lo_dic.items():
-                if not channel.lo_freq_range.includes(user_lo):
-                    raise PulseError("Specified LO freq %f is out of range %s" %
-                                     (user_lo, channel.lo_freq_range))
-                self._user_lo_dic[channel] = user_lo
+    def __init__(self, qubit_lo_freq: List[float], meas_lo_freq: List[float]):
+        self._qubit_lo_freq = tuple(qubit_lo_freq)
+        self._meas_lo_freq = tuple(meas_lo_freq)
 
-    # TODO: what should we publish? (with keeping this object immutable)
-    def items(self):
-        """Return items of this user LO dictionary"""
-        return self._user_lo_dic.items()
+    @property
+    def qubit_lo_freq(self):
+        """ Qubit LO frequency."""
+        return self._qubit_lo_freq
+
+    @property
+    def meas_lo_freq(self):
+        """ Measurement LO frequency."""
+        return self._meas_lo_freq

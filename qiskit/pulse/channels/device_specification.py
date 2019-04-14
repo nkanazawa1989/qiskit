@@ -9,10 +9,10 @@
 Specification of the device.
 """
 import logging
-from typing import List
+from typing import List, Dict
 
 from qiskit.pulse.exceptions import PulseError
-from .output_channel import DriveChannel, ControlChannel, MeasureChannel
+from .output_channel import OutputChannel, DriveChannel, ControlChannel, MeasureChannel
 from .pulse_channel import AcquireChannel, MemorySlot, RegisterSlot
 from .qubit import Qubit
 
@@ -103,6 +103,40 @@ class DeviceSpecification:
                 self._qubits == other._qubits:
             return True
         return False
+
+    def create_lo_config(self, user_lo_dic: Dict[OutputChannel, float]):
+        """Return `UserLoDict` object to configure experiment.
+        Args:
+            user_lo_dic (dict): dictionary of user's LO frequencies
+        Returns:
+            List: user LO frequencies
+        Raises:
+            PulseError: when invalid lo setting is provided
+        """
+        qubit_lo_freq = []
+        meas_lo_freq = []
+
+        for qubit in self._qubits:
+            # overwrite qubit lo frequency
+            lo_q = user_lo_dic.get(qubit.drive, qubit.drive.lo_frequency)
+            if not lo_q:
+                raise PulseError("Specified channel %s has no LO freq information." %
+                                 qubit.drive.name)
+            if not qubit.drive.lo_freq_range.includes(lo_q):
+                raise PulseError("Specified LO freq %f is out of range %s" %
+                                 (lo_q, qubit.drive.lo_freq_range))
+            qubit_lo_freq.append(lo_q)
+            # overwrite meas lo frequency
+            lo_m = user_lo_dic.get(qubit.measure, qubit.measure.lo_frequency)
+            if not lo_m:
+                raise PulseError("Specified channel %s has no LO freq information." %
+                                 qubit.measure.name)
+            if not qubit.measure.lo_freq_range.includes(lo_m):
+                raise PulseError("Specified LO freq %f is out of range %s" %
+                                 (lo_q, qubit.drive.lo_freq_range))
+            meas_lo_freq.append(lo_m)
+
+        return qubit_lo_freq, meas_lo_freq
 
     @property
     def q(self) -> List[Qubit]:

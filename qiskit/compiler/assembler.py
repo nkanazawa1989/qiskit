@@ -15,7 +15,7 @@ import numpy
 import sympy
 
 from qiskit.circuit.quantumcircuit import QuantumCircuit
-from qiskit.pulse import ConditionedSchedule, UserLoDict
+from qiskit.pulse import ConditionedSchedule
 from qiskit.pulse.commands import DriveInstruction
 from qiskit.qobj import (QasmQobj, PulseQobj, QobjExperimentHeader, QobjHeader,
                          QasmQobjInstruction, QasmQobjExperimentConfig, QasmQobjExperiment,
@@ -164,21 +164,6 @@ def assemble_circuits(circuits, run_config=None, qobj_header=None, qobj_id=None)
                     experiments=experiments, header=qobj_header)
 
 
-def _replaced_with_user_los(user_lo_dict, default_los):
-    """Return user LO frequencies replaced from `default_los`.
-    Args:
-        user_lo_dict(UserLoDict): dictionary of user's LO frequencies
-        default_los(list(float)): default LO frequencies to be replaced
-    Returns:
-        List: user LO frequencies
-    """
-    res = copy.copy(default_los)
-    for channel, user_lo in user_lo_dict.items():
-        res[channel.index] = user_lo
-
-    return res
-
-
 def assemble_schedules(schedules, dict_config, dict_header, converter=PulseQobjConverter):
     """Assembles a list of circuits into a qobj which can be run on the backend.
 
@@ -210,16 +195,12 @@ def assemble_schedules(schedules, dict_config, dict_header, converter=PulseQobjC
         # use LO frequency configs
         lo_freqs = {}
         if conditioned.user_lo_dict:
-            if default_qubit_lo_freq:
-                user_qubit_los = _replaced_with_user_los(conditioned.user_lo_dict,
-                                                         default_qubit_lo_freq)
-                if user_qubit_los != default_qubit_lo_freq:
-                    lo_freqs['qubit_lo_freq'] = user_qubit_los
-            if default_meas_lo_freq:
-                user_meas_los = _replaced_with_user_los(conditioned.user_lo_dict,
-                                                        default_meas_lo_freq)
-                if user_meas_los != default_meas_lo_freq:
-                    lo_freqs['meas_lo_freq'] = user_meas_los
+            user_qubit_los = conditioned.user_lo_dict.qubit_lo_freq
+            if user_qubit_los != default_qubit_lo_freq:
+                lo_freqs['qubit_lo_freq'] = user_qubit_los
+            user_meas_los = conditioned.user_lo_dict.meas_lo_freq
+            if user_meas_los != default_meas_lo_freq:
+                lo_freqs['meas_lo_freq'] = user_meas_los
 
         # generate experimental configuration
         experimentconfig = PulseQobjExperimentConfig(**lo_freqs)
@@ -227,6 +208,7 @@ def assemble_schedules(schedules, dict_config, dict_header, converter=PulseQobjC
         # generate experimental header
         experimentheader = QobjExperimentHeader(name=conditioned.name or 'Experiment-%d' % exp_idx)
 
+        # generate instructions
         commands = []
         for instruction in conditioned.schedule.flat_instruction_sequence():
             # TODO: support conditional gate
