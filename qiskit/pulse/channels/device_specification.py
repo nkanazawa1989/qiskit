@@ -11,6 +11,7 @@ Specification of the device.
 import logging
 from typing import List, Dict
 
+from qiskit.pulse import UserLoDict
 from qiskit.pulse.exceptions import PulseError
 from .output_channel import OutputChannel, DriveChannel, ControlChannel, MeasureChannel
 from .pulse_channel import AcquireChannel, MemorySlot, RegisterSlot
@@ -136,7 +137,7 @@ class DeviceSpecification:
                                  (lo_q, qubit.drive.lo_freq_range))
             meas_lo_freq.append(lo_m)
 
-        return qubit_lo_freq, meas_lo_freq
+        return UserLoDict(qubit_lo_freq=qubit_lo_freq, meas_lo_freq=meas_lo_freq)
 
     @property
     def q(self) -> List[Qubit]:

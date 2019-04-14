@@ -8,45 +8,53 @@
 """Test cases for the experimental conditions for pulse."""
 import unittest
 
-from qiskit.pulse.channels import DriveChannel
+from qiskit.pulse import DeviceSpecification
 from qiskit.pulse.exceptions import PulseError
-from qiskit.pulse.schedule import UserLoDict
 from qiskit.test import QiskitTestCase
+from qiskit.test.mock import FakeOpenPulse2Q
 
 
 class TestUserLoDict(QiskitTestCase):
     """UserLoDict tests."""
 
+    def setUp(self):
+        self.device = DeviceSpecification.create_from(FakeOpenPulse2Q())
+
     def test_can_create_empty_user_lo_dict(self):
         """Test if a UserLoDict can be created without no arguments.
         """
-        user_lo_dict = UserLoDict()
-        self.assertEqual({}, user_lo_dict._user_lo_dic)
+        user_lo_dict = self.device.create_lo_config({})
+        self.assertEqual((), user_lo_dict.qubit_lo_freq)
+        self.assertEqual((), user_lo_dict.meas_lo_freq)
 
     def test_can_create_valid_user_lo_dict(self):
         """Test if a UserLoDict can be created with valid user_los.
         """
-        channel = DriveChannel(0, lo_frequency=1.2, lo_freq_range=(1.0, 2.0))
-        user_lo_dict = UserLoDict({channel: 1.4})
-        self.assertEqual(1.4, user_lo_dict._user_lo_dic[channel])
+        user_lo_dict = self.device.create_lo_config({
+            self.device.q[0].drive: 5.2,
+            self.device.q[0].measure: 7.1
+        })
+        self.assertEqual(5.2, user_lo_dict.qubit_lo_freq[0])
+        self.assertEqual(7.1, user_lo_dict.meas_lo_freq[0])
 
     def test_fail_to_create_with_out_of_range_user_lo(self):
         """Test if a UserLoDict cannot be created with invalid user_los.
         """
-        channel = DriveChannel(0, lo_frequency=1.2, lo_freq_range=(1.0, 2.0))
         with self.assertRaises(PulseError):
-            _ = UserLoDict({channel: 3.3})
+            _ = self.device.create_lo_config({self.device.q[0].drive: 7.2})
 
     def test_keep_dict_unchanged_after_updating_the_dict_used_in_construction(self):
         """Test if a UserLoDict keeps its dictionary unchanged even after
         the dictionary used in construction is updated.
         """
-        channel = DriveChannel(0, lo_frequency=1.2)
-        original = {channel: 3.4}
-        user_lo_dict = UserLoDict(original)
-        self.assertEqual(3.4, user_lo_dict._user_lo_dic[channel])
-        original[channel] = 5.6
-        self.assertEqual(3.4, user_lo_dict._user_lo_dic[channel])
+        channel = self.device.q[0].drive
+        original = {channel: 5.2}
+
+        user_lo_dict = self.device.create_lo_config(original)
+        self.assertEqual(5.2, user_lo_dict.qubit_lo_freq[0])
+
+        original[channel] = 5.4
+        self.assertEqual(5.2, user_lo_dict.qubit_lo_freq[0])
 
 
 if __name__ == '__main__':
