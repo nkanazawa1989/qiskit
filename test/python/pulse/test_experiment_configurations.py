@@ -32,10 +32,10 @@ class TestUserLoDict(QiskitTestCase):
         """
         user_lo_dict = self.device.create_lo_config({
             self.device.q[0].drive: 5.2,
-            self.device.q[0].measure: 7.1
+            self.device.q[0].measure: 6.7
         })
         self.assertEqual(5.2, user_lo_dict.qubit_lo_freq[0])
-        self.assertEqual(7.1, user_lo_dict.meas_lo_freq[0])
+        self.assertEqual(6.7, user_lo_dict.meas_lo_freq[0])
 
     def test_fail_to_create_with_out_of_range_user_lo(self):
         """Test if a UserLoDict cannot be created with invalid user_los.
