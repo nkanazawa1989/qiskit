@@ -8,7 +8,6 @@
 # pylint: disable=unused-import
 
 """Assemble function for converting a list of circuits into a qobj"""
-import copy
 import uuid
 
 import numpy

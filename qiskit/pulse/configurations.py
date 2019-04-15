@@ -8,22 +8,30 @@
 """
 Configurations for pulse experiments.
 """
-from typing import List
+from typing import Dict
+from .channels import OutputChannel
 
 
 class UserLoDict:
     """Dictionary of user LO frequency by channel"""
 
-    def __init__(self, qubit_lo_freq: List[float], meas_lo_freq: List[float]):
-        self._qubit_lo_freq = tuple(qubit_lo_freq)
-        self._meas_lo_freq = tuple(meas_lo_freq)
+    def __init__(self,
+                 qubit_lo_freq: Dict[OutputChannel, float],
+                 meas_lo_freq: Dict[OutputChannel, float]
+                 ):
+        self._qubit_lo_freq = qubit_lo_freq
+        self._meas_lo_freq = meas_lo_freq
 
     @property
     def qubit_lo_freq(self):
         """ Qubit LO frequency."""
-        return self._qubit_lo_freq
+        qubit_lo_freq = [val for val in self._qubit_lo_freq.values()]
+
+        return qubit_lo_freq
 
     @property
     def meas_lo_freq(self):
         """ Measurement LO frequency."""
-        return self._meas_lo_freq
+        meas_lo_freq = [val for val in self.meas_lo_freq.values()]
+
+        return meas_lo_freq

@@ -9,6 +9,7 @@
 Specification of the device.
 """
 import logging
+from collections import OrderedDict
 from typing import List, Dict
 
 from qiskit.pulse.configurations import UserLoDict
@@ -110,32 +111,32 @@ class DeviceSpecification:
         Args:
             user_lo_dic (dict): dictionary of user's LO frequencies
         Returns:
-            List: user LO frequencies
+            tuple(dict): user LO frequencies
         Raises:
             PulseError: when invalid lo setting is provided
         """
-        qubit_lo_freq = []
-        meas_lo_freq = []
+        qubit_lo_freq = OrderedDict()
+        meas_lo_freq = OrderedDict()
 
         for qubit in self._qubits:
             # overwrite qubit lo frequency
             lo_q = user_lo_dic.get(qubit.drive, qubit.drive.lo_frequency)
             if not lo_q:
-                raise PulseError("Specified channel %s has no LO freq information." %
+                raise PulseError("Channel %s has no LO freq information." %
                                  qubit.drive.name)
             if not qubit.drive.lo_freq_range.includes(lo_q):
                 raise PulseError("Specified LO freq %f is out of range %s" %
                                  (lo_q, qubit.drive.lo_freq_range))
-            qubit_lo_freq.append(lo_q)
+            qubit_lo_freq[qubit.drive] = lo_q
             # overwrite meas lo frequency
             lo_m = user_lo_dic.get(qubit.measure, qubit.measure.lo_frequency)
             if not lo_m:
-                raise PulseError("Specified channel %s has no LO freq information." %
+                raise PulseError("Channel %s has no LO freq information." %
                                  qubit.measure.name)
             if not qubit.measure.lo_freq_range.includes(lo_m):
                 raise PulseError("Specified LO freq %f is out of range %s" %
                                  (lo_q, qubit.drive.lo_freq_range))
-            meas_lo_freq.append(lo_m)
+            meas_lo_freq[qubit.measure] = lo_m
 
         return UserLoDict(qubit_lo_freq=qubit_lo_freq, meas_lo_freq=meas_lo_freq)
 
