@@ -24,6 +24,7 @@ from qiskit.compiler import assemble_circuits, assemble_schedules, transpile
 from qiskit.pulse import Schedule, ConditionedSchedule
 from qiskit.pulse.configurations import UserLoDict
 from qiskit.pulse.exceptions import PulseError
+from qiskit.validation.exceptions import ModelValidationError
 from qiskit.qobj import QobjHeader
 
 logger = logging.getLogger(__name__)
@@ -168,14 +169,26 @@ def execute_schedules(schedules, backend, user_lo_dicts=None, **kwargs):
     """
     backend_config = backend.configuration()
 
+    # TODO : Remove usage of config.defaults when backend.defaults() is updated.
+    try:
+        backend_default = backend.defaults()
+    except ModelValidationError:
+        from collections import namedtuple
+        BackendDefault = namedtuple('BackendDefault', ('qubit_freq_est', 'meas_freq_est'))
+
+        backend_default = BackendDefault(
+            qubit_freq_est=backend_config.defaults['qubit_freq_est'],
+            meas_freq_est=backend_config.defaults['meas_freq_est']
+        )
+
     # filling in the config with backend defaults and user defined
     config = {
         'meas_level': 1,
         'memory_slots': backend_config.n_qubits,
         'memory_slot_size': 100,
         'meas_return': 'avg',
-        'qubit_lo_freq': backend_config.defaults['qubit_freq_est'],
-        'meas_lo_freq': backend_config.defaults['meas_freq_est'],
+        'qubit_lo_freq': backend_default.qubit_freq_est,
+        'meas_lo_freq': backend_default.meas_freq_est,
         'rep_time': backend_config.rep_times[-1]
     }
     config.update(kwargs)
