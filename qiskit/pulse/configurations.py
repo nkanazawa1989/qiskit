@@ -9,7 +9,7 @@
 Configurations for pulse experiments.
 """
 from typing import Dict
-from .channels import OutputChannel
+from .channels.output_channel import OutputChannel
 
 
 class UserLoDict:
@@ -32,6 +32,6 @@ class UserLoDict:
     @property
     def meas_lo_freq(self):
         """ Measurement LO frequency."""
-        meas_lo_freq = [val for val in self.meas_lo_freq.values()]
+        meas_lo_freq = [val for val in self._meas_lo_freq.values()]
 
         return meas_lo_freq
