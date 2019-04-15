@@ -164,13 +164,13 @@ def assemble_circuits(circuits, run_config=None, qobj_header=None, qobj_id=None)
 
 
 def assemble_schedules(schedules, dict_config, dict_header, converter=PulseQobjConverter):
-    """Assembles a list of circuits into a qobj which can be run on the backend.
+    """Assembles a list of schedules into a qobj which can be run on a backend.
 
     Args:
-        schedules (list[ConditionedSchedule] or ConditionedSchedule): schedules to assemble
+        schedules (List[ConditionedSchedule] or ConditionedSchedule): schedules to assemble
         dict_config (dict): configuration of experiments
         dict_header (dict): header to pass to the results
-        converter (PulseQobjConverter): converter to convert pulse instruction to qobj instruction
+        converter (PulseQobjConverter): converter to convert pulse instructions to qobj instructions
 
     Returns:
         PulseQobj: the Qobj to be run on the backends
@@ -205,7 +205,7 @@ def assemble_schedules(schedules, dict_config, dict_header, converter=PulseQobjC
         experimentconfig = PulseQobjExperimentConfig(**lo_freqs)
 
         # generate experimental header
-        experimentheader = QobjExperimentHeader(name=conditioned.name or 'Experiment-%d' % exp_idx)
+        experimentheader = QobjExperimentHeader(name=conditioned.name or 'experiment_%d' % exp_idx)
 
         # generate instructions
         commands = []
