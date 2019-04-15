@@ -120,7 +120,7 @@ class DeviceSpecification:
 
         for qubit in self._qubits:
             # overwrite qubit lo frequency
-            lo_q = user_lo_dic.get(qubit.drive, qubit.drive.lo_frequency)
+            lo_q = user_lo_dic.get(qubit.drive, qubit.drive.lo_freq)
             if not lo_q:
                 raise PulseError("Channel %s has no LO freq information." %
                                  qubit.drive.name)
@@ -129,7 +129,7 @@ class DeviceSpecification:
                                  (lo_q, qubit.drive.lo_freq_range))
             qubit_lo_freq[qubit.drive] = lo_q
             # overwrite meas lo frequency
-            lo_m = user_lo_dic.get(qubit.measure, qubit.measure.lo_frequency)
+            lo_m = user_lo_dic.get(qubit.measure, qubit.measure.lo_freq)
             if not lo_m:
                 raise PulseError("Channel %s has no LO freq information." %
                                  qubit.measure.name)

@@ -25,13 +25,13 @@ class UserLoDict:
     @property
     def qubit_lo_freq(self):
         """ Qubit LO frequency."""
-        qubit_lo_freq = [val for val in self._qubit_lo_freq.values()]
+        qubit_lo_freq = tuple(val for val in self._qubit_lo_freq.values())
 
         return qubit_lo_freq
 
     @property
     def meas_lo_freq(self):
         """ Measurement LO frequency."""
-        meas_lo_freq = [val for val in self._meas_lo_freq.values()]
+        meas_lo_freq = tuple(val for val in self._meas_lo_freq.values())
 
         return meas_lo_freq
