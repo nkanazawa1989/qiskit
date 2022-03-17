@@ -15,6 +15,12 @@
 from .alap import ALAPSchedule
 from .asap import ASAPSchedule
 from .time_unit_conversion import TimeUnitConversion
-from .instruction_alignment import AlignMeasures, ValidatePulseGates
-from .pad_delay import PadDelay
 from .dynamical_decoupling import DynamicalDecoupling
+from .pad_delay import PadDelay
+from .alignments import InstructionDurationCheck, ValidatePulseGates, ConstrainedReschedule
+
+# For backward compability
+from . import alignments as instruction_alignments
+
+# TODO Deprecated pass. Will be removed after deprecation period.
+from .alignments import AlignMeasures
