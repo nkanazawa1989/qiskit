@@ -233,7 +233,7 @@ impl Target {
         qubit_properties = None,
         concurrent_measurements = None,
     ))]
-    fn new(
+    pub fn new(
         description: Option<String>,
         num_qubits: Option<usize>,
         dt: Option<f64>,
