@@ -289,7 +289,7 @@ impl Target {
     ///     TranspilerError: If an operation class is passed in for ``instruction`` and no name
     ///         is specified or ``properties`` is set.
     #[pyo3(signature = (instruction, name, properties=None))]
-    fn add_instruction(
+    pub fn add_instruction(
         &mut self,
         instruction: TargetOperation,
         name: &str,
