@@ -1210,7 +1210,7 @@ impl Target {
 // To access the Target's gate map by gate name.
 impl Index<&str> for Target {
     type Output = PropsMap;
-    fn index(&self, index: &str) -> &Self::Output {
+    fn index(&self, index: &str) -> &ProsMap {
         self.gate_map.index(index)
     }
 }
